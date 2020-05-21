@@ -4,12 +4,35 @@ import time
 import os
 
 screen = curses.initscr()
+height, width = screen.getmaxyx() #Getting Height and Width
+title = "Quantitative Network Analysis"
+footer = "Ctrl + C to Exit!"
+start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
+start_y = int((height // 2) - 5)
+start_x = int(width // 2) - 20
 
-screen.addstr(0, 3, "Quantitative Network Analysis",curses.A_BOLD)
-screen.addstr(3, 1, "Download Speed")
-screen.addstr(4, 1, "Upload Speed")
-screen.addstr(6, 1, "Session Data Downloaded")
-screen.addstr(7, 1, "Session Data Uploaded")
+#Color Combinations
+curses.start_color()
+curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
+curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
+
+#Static Text
+screen.addstr(start_y, start_x_title, title, curses.A_BOLD)
+screen.addstr(start_y+3, start_x, "Download Speed")
+screen.addstr(start_y+4, start_x, "Upload Speed")
+screen.addstr(start_y+6, start_x, "Data Downloaded")
+screen.addstr(start_y+7, start_x, "Data Uploaded")
+
+#Footer Static Text
+screen.attron(curses.color_pair(3))
+screen.addstr(height-1, 0, footer)
+screen.addstr(height-1, len(footer), " " * (width - len(footer) - 1))
+screen.attroff(curses.color_pair(3))
+
+#Height & Width At (0,0)
+whRender = "W: {}, H: {}".format(width, height)
+screen.addstr(0, 0, whRender, curses.color_pair(1))
 
 #curses.napms(3000) Add Delay Before Refreshing Screen
 #curses.endwin()
@@ -21,17 +44,18 @@ upload = 0.00
 download = 0.00
 speed = (upload, download)
 saveInitalData = False
+sessionStartedTime = t0
 
 while True:
     last_speed = speed
     upload = psutil.net_io_counters(pernic=True)['wlp2s0'][0]
     download = psutil.net_io_counters(pernic=True)['wlp2s0'][1]
-
+    
     if (saveInitalData == False):
         initialUpPackets = upload
         initialDownPackets = download
         saveInitalData = True
-    
+        
     speed = (upload, download)
     t1 = time.time()
     
@@ -45,12 +69,26 @@ while True:
         time.sleep(0.75)
         upspeedAsString = '{:0.2f} kB/s '.format(uploadSpeed)
         downspeedAsString = '{:0.2f} kB/s'.format(downloadSpeed)
-        uploadSessionData = '{:0.2f} MB'.format((upload-initialUpPackets)/1024/1024)
-        downloadSessionData = '{:0.2f} MB'.format((download-initialDownPackets)/1024/1024)
+        uploadSessionData = (upload-initialUpPackets)/1024/1024
+        downloadSessionData = (download-initialDownPackets)/1024/1024
+        uploadSessionDataAsString = '{:0.2f} MB'.format(uploadSessionData)
+        downloadSessionDataAsString = '{:0.2f} MB'.format(downloadSessionData)
 
-        if (saveInitalData == True):
-            screen.addstr(3, 20, downspeedAsString)
-            screen.addstr(4, 20, upspeedAsString)
-            screen.addstr(6, 30, downloadSessionData)
-            screen.addstr(7, 30, uploadSessionData)
-            screen.refresh()
+    if (saveInitalData == True):
+        screen.attron(curses.color_pair(1))
+        screen.addstr(start_y+3, start_x+20, downspeedAsString)
+        screen.attroff(curses.color_pair(1))
+        screen.addstr(start_y+4, start_x+20, upspeedAsString)
+        
+        if (downloadSessionData >= 500 or uploadSessionData >= 200):
+            screen.attron(curses.color_pair(2))
+            screen.addstr(start_y+6, start_x+20, downloadSessionDataAsString)
+            screen.addstr(start_y+7, start_x+20, uploadSessionDataAsString)
+            screen.attroff(curses.color_pair(2))
+        else:
+            screen.attron(curses.color_pair(1))
+            screen.addstr(start_y+6, start_x+20, downloadSessionDataAsString)
+            screen.attroff(curses.color_pair(1))
+            screen.addstr(start_y+7, start_x+20, uploadSessionDataAsString)
+        
+        screen.refresh()
